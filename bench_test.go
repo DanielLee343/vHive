@@ -208,6 +208,7 @@ func TestBenchServe(t *testing.T) {
 	// Pull image
 	resp, _, err := funcPool.Serve(context.Background(), "plr-fnc", imageName, "record")
 	require.NoError(t, err, "Function returned error")
+	log.Info("response is: ", resp.Payload)
 	require.Equal(t, resp.Payload, "Hello, record_response!")
 
 	vmIDString := strconv.Itoa(vmID)
@@ -240,6 +241,7 @@ func TestBenchServe(t *testing.T) {
 
 	// FUSE
 	if orch.GetUPFEnabled() {
+		log.Info("UPF enabled!!!")
 		// Page stats
 		err = funcPool.DumpUPFPageStats(vmIDString, imageName, *funcName, getOutFile("pageStats.csv"))
 		require.NoError(t, err, "Failed to dump page stats for"+*funcName)

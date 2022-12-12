@@ -190,6 +190,7 @@ func (o *Orchestrator) StartVM(ctx context.Context, vmID, imageName string) (_ *
 
 	defer func() {
 		if retErr != nil {
+			log.Info("killing container...")
 			if err := task.Kill(ctx, syscall.SIGKILL); err != nil {
 				logger.WithError(err).Errorf("failed to kill task after failure")
 			}

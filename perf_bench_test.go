@@ -49,7 +49,7 @@ var (
 	warmUpTime   = flag.Float64("warmUpTime", 5, "The warm up time before profiling in seconds")
 	profileTime  = flag.Float64("profileTime", 10, "The profiling time in seconds")
 	coolDownTime = flag.Float64("coolDownTime", 1, "The cool down time after profiling in seconds")
-	loadStep     = flag.Int("loadStep", 5, "The percentage of target RPS the benchmark loads at every step")
+	loadStep     = flag.Int("loadStep", 100, "The percentage of target RPS the benchmark loads at every step")
 	funcNames    = flag.String("funcNames", "helloworld", "Names of the functions to benchmark, separated by comma")
 	// *profileCPUID allocates only one VM to the core and profiler only collects counters from the core.
 	profileCPUID = flag.Int("profileCPUID", -1, "Bind one VM to the core of the CPU and profile the core only")
@@ -86,7 +86,7 @@ var (
 // counters which are also saved under *benchDir folder
 func TestProfileIncrementConfiguration(t *testing.T) {
 
-	t.Skip("Skipping TestProfileIncrementConfiguration")
+	// t.Skip("Skipping TestProfileIncrementConfiguration")
 
 	var (
 		idx, rps      int
@@ -134,7 +134,7 @@ func TestProfileIncrementConfiguration(t *testing.T) {
 // to violate tail latency threshold and then saves the results in bench.csv under *benchDir folder
 func TestProfileSingleConfiguration(t *testing.T) {
 
-	t.Skip("Skipping TestProfileSingleConfiguration")
+	// t.Skip("Skipping TestProfileSingleConfiguration")
 
 	var (
 		servedTh      uint64
@@ -147,11 +147,15 @@ func TestProfileSingleConfiguration(t *testing.T) {
 
 	checkInputValidation(t)
 
+	log.Info("creating results dir...")
 	createResultsDir()
 
 	funcPool = NewFuncPool(!isSaveMemoryConst, servedTh, pinnedFuncNum, isTestModeConst)
+	log.Info("images: ", images)
+	// time.Sleep(20*time.Second)
 
 	bootVMs(t, images, 0, *vmNum)
+	log.Info("boots complete!!")
 
 	serveMetrics := loadAndProfile(t, images, *vmNum, *targetRPS, isSyncOffload)
 
@@ -324,10 +328,14 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 	} else {
 		threshold = 10 * getUnloadedServiceTime()
 	}
+	log.Info("threshold: ", threshold)
 
 	cpus, err := cpuNum()
 	require.NoError(t, err, "Cannot get the number of CPU")
 	log.Debugf("CPU number is %d", cpus)
+	log.Info("cpuNum: ", cpus)
+	log.Info("stepSize: ", stepSize)
+	
 	for step := stepSize; step < 1+stepSize; step += stepSize {
 		var (
 			vmID, requestID             int
@@ -374,7 +382,7 @@ func loadAndProfile(t *testing.T, images []string, vmNum, targetRPS int, isSyncO
 		vmGroup.Wait()
 		log.Debugf("All VM returned in %d Milliseconds", time.Since(tStart).Milliseconds())
 		latencies := <-latencyCh
-		log.Debugf("Mean Latency: %.2f, Tail Latency: %.2f", latencies.meanLatency, latencies.tailLatency)
+		log.Info("Mean Latency: ",latencies.meanLatency,", Tail Latency: ", latencies.tailLatency)
 		<-profileCh
 
 		// Collect results
@@ -424,12 +432,12 @@ func loadVMs(t *testing.T, vmGroup *sync.WaitGroup, vmID, requestID int, imageNa
 	require.Equal(t, resp.IsColdStart, false)
 	if err == nil {
 		if resp.Payload != "Hello, replay_response!" {
-			log.Debugf("Function returned invalid: %s", resp.Payload)
+			log.Info("Function returned invalid: ", resp.Payload)
 		}
 		if atomic.LoadInt32(isProfile) != 0 {
 			atomic.AddInt64(realRequests, 1)
 			atomic.AddInt64(totalTime, execTime)
-			log.Debugf("VM %s: requestID %d completed in %d milliseconds", vmIDString, requestID, execTime)
+			log.Info("VM ",vmIDString,": requestID ", requestID, " completed in ", execTime, " milliseconds")
 		}
 	} else {
 		log.Debugf("VM %s: Function returned error %v", vmIDString, err)
@@ -529,7 +537,7 @@ func tearDownVMs(t *testing.T, images []string, vmNum int, isSyncOffload bool) {
 func getImages(t *testing.T) []string {
 	var (
 		images = map[string]string{
-			"helloworld":   "ghcr.io/ease-lab/helloworld:var_workload",
+			"helloworld":   "docker.io/lyuze/helloworld:0.3",
 			"chameleon":    "ghcr.io/ease-lab/chameleon:var_workload",
 			"pyaes":        "ghcr.io/ease-lab/pyaes:var_workload",
 			"image_rotate": "ghcr.io/ease-lab/image_rotate:var_workload",

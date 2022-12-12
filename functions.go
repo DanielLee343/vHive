@@ -250,6 +250,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 
 	f.OnceAddInstance.Do(
 		func() {
+			logger.Info("once add")
 			var metr *metrics.Metric
 			isColdStart = true
 			logger.Debug("Function is inactive, starting the instance...")
@@ -272,7 +273,9 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 	defer cancel()
 
 	tStart = time.Now()
+	log.Info("fwd start")
 	resp, err := f.fwdRPC(ctxFwd, reqPayload)
+	log.Info("fwd end")
 	serveMetric.MetricMap[metrics.FuncInvocation] = metrics.ToUS(time.Since(tStart))
 
 	if err != nil && ctxFwd.Err() == context.Canceled {
@@ -299,7 +302,7 @@ func (f *Function) Serve(ctx context.Context, fID, imageName, reqPayload string)
 	if orch.GetSnapshotsEnabled() {
 		f.OnceCreateSnapInstance.Do(
 			func() {
-				logger.Debug("First time offloading, need to create a snapshot first")
+				log.Info("First time offloading, need to create a snapshot first")
 				f.CreateInstanceSnapshot()
 				f.isSnapshotReady = true
 			})
@@ -354,8 +357,10 @@ func (f *Function) AddInstance() *metrics.Metric {
 	defer cancel()
 
 	if f.isSnapshotReady {
+		log.Info("snapshot ready!")
 		metr = f.LoadInstance()
 	} else {
+		log.Info("add instance!!")
 		resp, _, err := orch.StartVM(ctx, f.getVMID(), f.imageName)
 		if err != nil {
 			log.Panic(err)

@@ -142,4 +142,14 @@ test-cri-gvisor:
 test-cri-travis: # Testing in travis is deprecated
 	$(MAKE) -C cri test-travis
 
+test-prof:
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_prof.out 2>$(CTRDLOGDIR)/fccd_prof.err &
+	sudo env "PATH=$(PATH)" go test -v -timeout 99999s -run TestProfileSingleConfiguration \
+		-args -funcNames helloworld -vm 1 -rps 1 -l 1
+test-basic-serve:
+	./scripts/clean_fcctr.sh
+	sudo mkdir -m777 -p $(CTRDLOGDIR) && sudo env "PATH=$(PATH)" /usr/local/bin/firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.out 2>$(CTRDLOGDIR)/fccd_orch_noupf_log_bench.err &
+	sudo env "PATH=$(PATH)" go test $(EXTRAGOARGS) -run TestBenchServe -args -iter 1 -benchDirTest configBase -metricsTest -funcName helloworld && sudo rm -rf configBase
+
 .PHONY: test-orch $(SUBDIRS) test-subdirs
